@@ -33,21 +33,14 @@
  *
  */
 
-#ifndef ADAFRUIT_NEOPIXEL_H
-#define ADAFRUIT_NEOPIXEL_H
 
-#ifdef ARDUINO
-  #if (ARDUINO >= 100)
-  #include <Arduino.h>
-  #else
-  #include <WProgram.h>
-  #include <pins_arduino.h>
-  #endif
-#endif
+#pragma once
+#include "pico/stdio.h"
+#include "hardware/pio.h"
+#include "pico/time.h"
+#include "ws2812byte.pio.h"
 
-#ifdef TARGET_LPC1768
-  #include <Arduino.h>
-#endif
+
 
 // The order of primary colors in the NeoPixel data stream can vary among
 // device types, manufacturers and even different revisions of the same
@@ -121,21 +114,11 @@
 // but code will be bigger. Conversely, can disable the NEO_KHZ400 line on
 // other MCUs to remove v1 support and save a little space.
 
+
 #define NEO_KHZ800 0x0000 ///< 800 KHz data transmission
-#ifndef __AVR_ATtiny85__
 #define NEO_KHZ400 0x0100 ///< 400 KHz data transmission
-#endif
 
-// If 400 KHz support is enabled, the third parameter to the constructor
-// requires a 16-bit value (in order to select 400 vs 800 KHz speed).
-// If only 800 KHz is enabled (as is default on ATtiny), an 8-bit value
-// is sufficient to encode pixel color order, saving some space.
-
-#ifdef NEO_KHZ400
 typedef uint16_t neoPixelType; ///< 3rd arg to Adafruit_NeoPixel constructor
-#else
-typedef uint8_t  neoPixelType; ///< 3rd arg to Adafruit_NeoPixel constructor
-#endif
 
 // These two tables are declared outside the Adafruit_NeoPixel class
 // because some boards may require oldschool compilers that don't
@@ -148,7 +131,7 @@ for x in range(256):
     print("{:3},".format(int((math.sin(x/128.0*math.pi)+1.0)*127.5+0.5))),
     if x&15 == 15: print
 */
-static const uint8_t PROGMEM _NeoPixelSineTable[256] = {
+static const uint8_t _NeoPixelSineTable[256] = {
   128,131,134,137,140,143,146,149,152,155,158,162,165,167,170,173,
   176,179,182,185,188,190,193,196,198,201,203,206,208,211,213,215,
   218,220,222,224,226,228,230,232,234,235,237,238,240,241,243,244,
@@ -174,7 +157,7 @@ for x in range(256):
     print("{:3},".format(int(math.pow((x)/255.0,gamma)*255.0+0.5))),
     if x&15 == 15: print
 */
-static const uint8_t PROGMEM _NeoPixelGammaTable[256] = {
+static const uint8_t _NeoPixelGammaTable[256] = {
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,
     1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,
@@ -192,6 +175,12 @@ static const uint8_t PROGMEM _NeoPixelGammaTable[256] = {
   182,184,186,188,191,193,195,197,199,202,204,206,209,211,213,215,
   218,220,223,225,227,230,232,235,237,240,242,245,247,250,252,255};
 
+// gloal hardware resource variables keeping track of configurations an usage on the pi Pico RP2040. 
+static int pio0_offset = -1;   		// offset of loaded pio neopixel program on pio0; -1 if no program loaded
+static int pio1_offset = -1;		// offset of loaded pio neopixel program on pio1; -1 if no program loaded
+static int pio_no_sm[2] = {0,0} ;	// number of state machines in use for Neopixel  
+
+
 /*! 
     @brief  Class that stores state and functions for interacting with
             Adafruit NeoPixels and compatible devices.
@@ -201,7 +190,7 @@ class Adafruit_NeoPixel {
  public:
 
   // Constructor: number of LEDs, pin number, LED type
-  Adafruit_NeoPixel(uint16_t n, uint16_t pin=6,
+  Adafruit_NeoPixel(uint16_t n, uint16_t pin=0,
     neoPixelType type=NEO_GRB + NEO_KHZ800);
   Adafruit_NeoPixel(void);
   ~Adafruit_NeoPixel();
@@ -232,10 +221,8 @@ class Adafruit_NeoPixel {
              if show() would block (meaning some idle time is available).
   */
   bool canShow(void) {
-    if (endTime > micros()) {
-      endTime = micros();
-    }
-    return (micros() - endTime) >= 300L;
+    int64_t howlongago = absolute_time_diff_us (endTime, get_absolute_time());
+    return (howlongago >= 300L);
   }
   /*!
     @brief   Get a pointer directly to the NeoPixel data buffer in RAM.
@@ -277,7 +264,7 @@ class Adafruit_NeoPixel {
              output is often used for pixel brightness in animation effects.
   */
   static uint8_t    sine8(uint8_t x) {
-    return pgm_read_byte(&_NeoPixelSineTable[x]); // 0-255 in, 0-255 out
+    return _NeoPixelSineTable[x]; // 0-255 in, 0-255 out
   }
   /*!
     @brief   An 8-bit gamma-correction function for basic pixel brightness
@@ -291,7 +278,7 @@ class Adafruit_NeoPixel {
              need to provide your own gamma-correction function instead.
   */
   static uint8_t    gamma8(uint8_t x) {
-    return pgm_read_byte(&_NeoPixelGammaTable[x]); // 0-255 in, 0-255 out
+    return _NeoPixelGammaTable[x]; // 0-255 in, 0-255 out
   }
   /*!
     @brief   Convert separate red, green and blue values into a single
@@ -337,11 +324,14 @@ class Adafruit_NeoPixel {
   */
   static uint32_t   gamma32(uint32_t x);
 
+
+  void rp2040Init(uint8_t pin) ;
+  void rp2040Show(uint8_t pin, uint8_t *pixels, uint32_t numBytes, bool is800KHz);
+  void rp2040changepin(uint8_t set_pin);
+
  protected:
 
-#ifdef NEO_KHZ400  // If 400 KHz NeoPixel support enabled...
   bool              is800KHz;   ///< true if 800 KHz pixels
-#endif
   bool              begun;      ///< true if begin() previously called
   uint16_t          numLEDs;    ///< Number of RGB LEDs in strip
   uint16_t          numBytes;   ///< Size of 'pixels' buffer below
@@ -352,15 +342,9 @@ class Adafruit_NeoPixel {
   uint8_t           gOffset;    ///< Index of green byte
   uint8_t           bOffset;    ///< Index of blue byte
   uint8_t           wOffset;    ///< Index of white (==rOffset if no white)
-  uint32_t          endTime;    ///< Latch timing reference
-#ifdef __AVR__
-  volatile uint8_t *port;       ///< Output PORT register
-  uint8_t           pinMask;    ///< Output PORT bitmask
-#endif
-#if defined(ARDUINO_ARCH_STM32) || defined(ARDUINO_ARCH_ARDUINO_CORE_STM32)
-  GPIO_TypeDef *gpioPort;       ///< Output GPIO PORT
-  uint32_t gpioPin;             ///< Output GPIO PIN
-#endif
+  absolute_time_t   endTime;    ///< Latch timing reference
+  PIO				pio;		///< chosen pio for this object
+  uint				sm;			///<chosen state machine for this object; -1 if not yet set or none available. 
+
 };
 
-#endif // ADAFRUIT_NEOPIXEL_H
