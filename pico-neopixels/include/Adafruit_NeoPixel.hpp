@@ -332,7 +332,7 @@ class Adafruit_NeoPixel {
  protected:
 
   bool              is800KHz;   ///< true if 800 KHz pixels
-  bool              begun;      ///< true if begin() previously called
+  bool              begun;      ///< true if the state machines & pio has started (after the first show). 
   uint16_t          numLEDs;    ///< Number of RGB LEDs in strip
   uint16_t          numBytes;   ///< Size of 'pixels' buffer below
   int16_t           pin;        ///< Output pin number (-1 if not yet set)

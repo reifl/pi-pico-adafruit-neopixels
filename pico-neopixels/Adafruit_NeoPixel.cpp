@@ -44,10 +44,28 @@
  */
 
 #include "Adafruit_NeoPixel.hpp"
+#include "pico/stdio.h"
 #include "pico/malloc.h"
 //#include "pico/mem_ops.h"
 #include <cstdlib>
 #include <cstring>
+#include <cstdio>
+
+//#define DEBUG0 // high level debugging
+//#define DEBUG1 // low level debugging
+
+#ifdef DEBUG0
+#define PRINTF0(...) printf(__VA_ARGS__)
+#else
+#define PRINTF0(...)
+#endif
+
+#ifdef DEBUG1
+#define PRINTF1(...) printf(__VA_ARGS__)
+#else
+#define PRINTF1(...)
+#endif
+
 
 /*!
   @brief   NeoPixel constructor when length, pin and pixel type are known
@@ -63,10 +81,15 @@
 */
 Adafruit_NeoPixel::Adafruit_NeoPixel(uint16_t n, uint16_t p, neoPixelType t) :
   begun(false), brightness(0), pixels(NULL) {
+  PRINTF1("In constructor 1\n");
   endTime = get_absolute_time() ;
-  updateType(t);
-  updateLength(n);
+  PRINTF1("In constructor 2\n");
   setPin(p);
+  PRINTF1("In constructor 3\n");
+  updateType(t);
+  PRINTF1("In constructor 4\n");
+  updateLength(n);
+
 }
 
 /*!
@@ -92,21 +115,30 @@ Adafruit_NeoPixel::Adafruit_NeoPixel() :
   @brief   Deallocate Adafruit_NeoPixel object, set data pin back to INPUT, unclaim the statemachine
 */
 Adafruit_NeoPixel::~Adafruit_NeoPixel() {
+  PRINTF0("In destructor\n  ===>\n");
+  memset(pixels, 0, numBytes);
+  show() ;
+  sleep_ms(20) ;
+  PRINTF1("End init = %d, pin = %d, 800kHz = %d, length = %d, pio= %d, sm = %d, offset = %d, no_sm = [%d, %d]\n ", begun, pin, is800KHz, numLEDs, pio_get_index(pio), sm, (pio_get_index(pio) == 0) ? pio0_offset : pio1_offset,pio_no_sm[0], pio_no_sm[1] );
+  PRINTF1("going to free\n");
   free(pixels);  // unclaim the memory for the pixels
+  PRINTF1("freed pixels\n");
   pio_sm_unclaim(pio,sm); // unclaim the state machine
   pio_no_sm[pio_get_index(pio)]-- ;
   if (pio_no_sm[pio_get_index(pio)] == 0 ) { // if no sm on the pio instance, remove the program
 	  pio_remove_program (pio, &ws2812byte_program, (pio_get_index(pio) == 0) ? pio0_offset : pio1_offset );
 	  if (pio_get_index(pio) == 0) {pio0_offset = -1;} else {pio1_offset = -1;}; 
   };
-	  
+ 
+ PRINTF0("End destruructor = %d, pin = %d, 800kHz = %d, length = %d, pio= %d, sm = %d, offset = %d, no_sm = [%d, %d]\n ", begun, pin, is800KHz, numLEDs, pio_get_index(pio), sm, (pio_get_index(pio) == 0) ? pio0_offset : pio1_offset,pio_no_sm[0], pio_no_sm[1] );
 }
 
 /*!
   @brief   Configure NeoPixel pin for output.
 */
 void Adafruit_NeoPixel::begin(void) {
-  begun = true;
+ // backwards comptability
+ // PRINTF0("In begin Begun = %d, pin = %d, length = %d\n", begun, pin, numLEDs);
 }
 
 /*!
@@ -171,41 +203,55 @@ void Adafruit_NeoPixel::updateType(neoPixelType t) {
 
 void Adafruit_NeoPixel::rp2040Init(uint8_t set_pin)
 {
+	PRINTF0("IN RP2040 INIT now\n"); 
     // get free sm & pio and store these in the protected variables of the class 
-    int resultsm, resultpio;
+    int resultsm;
+	bool canpio;
 	resultsm = pio_claim_unused_sm(pio0,false);
+	PRINTF1("resultsm = %d\n",resultsm);
 	if (resultsm != -1) {
-		resultpio = pio_can_add_program(pio0, &ws2812byte_program);
-		if (resultpio != -1) pio0_offset = pio_add_program(pio0, &ws2812byte_program);
+		if (pio0_offset == -1) {
+			canpio = pio_can_add_program(pio0, &ws2812byte_program);
+			PRINTF1("canpio = %d\n",canpio);
+			if (canpio) pio0_offset = pio_add_program(pio0, &ws2812byte_program);
+		};
+		pio = pio0;
 	};
-	if (resultsm == -1 || resultpio == -1) {
+	if (resultsm == -1 || pio0_offset == -1) {
 		resultsm = pio_claim_unused_sm(pio1,false);
 		if (resultsm != -1) {
-			resultpio = pio_can_add_program(pio1, &ws2812byte_program);
-			if (resultpio != -1) pio1_offset = pio_add_program(pio0, &ws2812byte_program);
+			if (pio1_offset == -1) {
+				canpio = pio_can_add_program(pio1, &ws2812byte_program);
+				if (canpio) pio1_offset = pio_add_program(pio0, &ws2812byte_program);
+			};
+			pio = pio1;
 		}
 	};
 	
-	if (resultsm == -1 || resultpio == -1) {
+	if (resultsm == -1 || (pio0_offset == -1 && pio1_offset == -1)) {
 		sm = -1 ;
 		return ;
 	}
 
-	pio_no_sm[resultpio]++ ;
-	pio = (resultpio == 0) ? pio0 : pio1 ;	
+	pio_no_sm[pio_get_index(pio)]++ ;
 					 
 	pin = set_pin ;
+	sm = resultsm ;
+	
+	PRINTF1("End init = %d, pin = %d, 800kHz = %d, length = %d, pio= %d, sm = %d, offset = %d, no_sm = [%d, %d]\n ", begun, pin, is800KHz, numLEDs, pio_get_index(pio), sm, (pio_get_index(pio) == 0) ? pio0_offset : pio1_offset,pio_no_sm[0], pio_no_sm[1] );
 	
     if (is800KHz)
     {
         // 800kHz, 8 bit transfers
-        ws2812byte_program_init(pio, sm, (resultpio == 0) ? pio0_offset : pio1_offset, pin, 800000, 8);
+        ws2812byte_program_init(pio, sm, (pio_get_index(pio) == 0) ? pio0_offset : pio1_offset, pin, 800000, 8);
     }
     else
     {
         // 400kHz, 8 bit transfers
-        ws2812byte_program_init(pio, sm, (resultpio == 0) ? pio0_offset : pio1_offset, pin, 400000, 8);
-    }
+        ws2812byte_program_init(pio, sm, (pio_get_index(pio) == 0) ? pio0_offset : pio1_offset, pin, 400000, 8);
+    } ;
+	begun = true ;
+	PRINTF0("exit INIT pio %d, sm %d\n", pio_get_index(pio),sm);
 }
 
 void Adafruit_NeoPixel::rp2040changepin(uint8_t set_pin)
@@ -226,18 +272,18 @@ void Adafruit_NeoPixel::rp2040changepin(uint8_t set_pin)
 }
  
 void  Adafruit_NeoPixel::rp2040Show(uint8_t pin, uint8_t *pixels, uint32_t numBytes, bool is800KHz)
-{
-    static bool init = true;
-    
-    if (init)
+{ 
+    PRINTF0("In Show,");
+	if (!begun)
     {
         // On first pass through initialise the PIO
         rp2040Init(pin);
-        init = false;
+		begun = true ;
     }
 
     if (sm == -1) { return ; }
-		
+
+//    PRINTF1("START TO SHOW = %d, pin = %d, 800kHz = %d, length = %d, pio= %d, sm = %d, offset = %d, no_sm = [%d, %d]\n ", begun, pin, is800KHz, numLEDs, pio_get_index(pio), sm, (pio_get_index(pio) == 0) ? pio0_offset : pio1_offset,pio_no_sm[0], pio_no_sm[1] );
     while(numBytes--)
         // Bits for transmission must be shifted to top 8 bits
         pio_sm_put_blocking(pio, sm, ((uint32_t)*pixels++)<< 24);
