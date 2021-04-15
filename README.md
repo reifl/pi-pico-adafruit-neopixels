@@ -38,8 +38,9 @@ In the destructor the library releases the claimed resources (the sm, and if no 
 
 It releases it at desctructor time. (E.g. when the object was constructed with "new" or when it goes out of scope in a function. When defined before main it will not go out of scope in the programming lifetime. This woudl be the normal use case. 
 
-There is a maximum of 8 neopixel strands, if pio and sm's are not used for other purposes in your project.
+There is a maximum of 8 neopixel strands, if pio and sm's are not used for other purposes in your project. They can be assigned to any pin
 
 
 
 ## Releases
+V0.9.0 Pre-release. Examples simple & strandtest_wheels are compiling and confirmed working. 
