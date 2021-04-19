@@ -31,16 +31,14 @@ nmake
 
 See the Adafruit Neopixel library documentation on the various resources. Note that the <code>begin()</code> method is only kept for compatibility reasons but has no effect. On the pico a dedicated pio statemachine is seized and started at the very first <code>show()</code> command of the object. 
 
-### resources (pico port)
+## Resources (specific to the pico port)
 Each object seizes a pio/sm pair at the moment of the first call to the "show" method. It uses the SDK calls <code>pio_claim_unused_sm</code>, <code>pio_can_add_program</code> to find unused statemachines and unused instruction space on the pio's. 
 
 In the destructor the library releases the claimed resources (the sm, and if no other statemachine are using it anymore also removes the program instruction space on the designated pio by using <code>pio_remove_program</code>, if there are no other sm serving neopixel objects on that pio). 
 
-It releases it at desctructor time. (E.g. when the object was constructed with "new" or when it goes out of scope in a function. When defined before main it will not go out of scope in the programming lifetime. This woudl be the normal use case. 
+The destructor is called if called explicitlky when the object was constructed with "new" or implicitly when it goes out of scope in a function. These are all quite special cases. When defined before main it will not go out of scope in the programming lifetime. This would be the normal use case. 
 
-There is a maximum of 8 neopixel strands, if pio and sm's are not used for other purposes in your project. They can be assigned to any pin
-
-
+There is a maximum of 8 neopixel strands, if pio and sm's are not used for any other purposes in your project. Strands can be assigned to any GPIO pin of the pico. 
 
 ## Releases
-V0.9.0 Pre-release. Examples simple & strandtest_wheels are compiling and confirmed working. 
+V0.9.0 Pre-release. Examples simple & strandtest_wheels are compiling and confirmed working. Some documentation work needed to promote to a proper release. 
