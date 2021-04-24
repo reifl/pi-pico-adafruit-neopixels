@@ -31,7 +31,7 @@ nmake
 
 See the Adafruit Neopixel library documentation on the various resources. Note that the <code>begin()</code> method is only kept for compatibility reasons but has no effect. On the pico a dedicated pio statemachine is seized and started at the very first <code>show()</code> command of the object. 
 
-The examples that work are "simple", "strandtest_wheels" and .... for the owner of the Maker Pi PICO board of Cytron the xample e"onboard_cytron" that gives a nice colorful show on the built in neopixel (a strand of length 1 on PIN 28). 
+The examples that work are "simple", "strandtest_wheels" and .... for the owner of the Maker PI PICO board of Cytron the example "onboard_cytron" that gives a nice colorful show on the built in neopixel (a strand of length 1 on PIN 28). 
 
 ## Resources (specific to the pico port)
 Each object seizes a pio/sm pair at the moment of the first call to the "show" method. It uses the SDK calls <code>pio_claim_unused_sm</code>, <code>pio_can_add_program</code> to find unused statemachines and unused instruction space on the pio's. 
