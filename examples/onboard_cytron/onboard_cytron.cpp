@@ -8,6 +8,7 @@ void delay(uint32_t ms) {
 };
 
 #define PIN 27
+#define ONBOARD 28
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -19,6 +20,7 @@ void delay(uint32_t ms) {
 //   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel onb = Adafruit_NeoPixel(1, ONBOARD, NEO_GRB + NEO_KHZ800);
 
 // IMPORTANT: To reduce NeoPixel burnout risk, add 1000 uF capacitor across
 // pixel power leads, add 300 - 500 Ohm resistor on first pixel's data input
@@ -65,7 +67,9 @@ int main() {
 void colorWipe(uint32_t c, uint8_t wait) {
   for(uint16_t i=0; i<strip.numPixels(); i++) {
     strip.setPixelColor(i, c);
+	onb.setPixelColor(0,c);
     strip.show();
+	onb.show();
     delay(wait);
   }
 }
@@ -77,7 +81,9 @@ void rainbow(uint8_t wait) {
     for(i=0; i<strip.numPixels(); i++) {
       strip.setPixelColor(i, Wheel((i+j) & 255));
     }
+	onb.setPixelColor(0, Wheel((j) & 255));
     strip.show();
+	onb.show();
     delay(wait);
   }
 }
@@ -90,7 +96,9 @@ void rainbowCycle(uint8_t wait) {
     for(i=0; i< strip.numPixels(); i++) {
       strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
     }
+	onb.setPixelColor(0, Wheel((j) & 255));
     strip.show();
+	onb.show();
     delay(wait);
   }
 }
@@ -102,13 +110,16 @@ void theaterChase(uint32_t c, uint8_t wait) {
       for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
         strip.setPixelColor(i+q, c);    //turn every third pixel on
       }
+	  onb.setPixelColor(0,c);
       strip.show();
-
+      onb.show() ;
+	  
       delay(wait);
 
       for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
         strip.setPixelColor(i+q, 0);        //turn every third pixel off
       }
+	  onb.setPixelColor(0,0);
     }
   }
 }
@@ -120,8 +131,10 @@ void theaterChaseRainbow(uint8_t wait) {
       for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
         strip.setPixelColor(i+q, Wheel( (i+j) % 255));    //turn every third pixel on
       }
+	  onb.setPixelColor(0, Wheel((j) & 255));
       strip.show();
-
+	  onb.show();
+	  
       delay(wait);
 
       for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
