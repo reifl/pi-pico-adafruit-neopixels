@@ -77,4 +77,5 @@ int main() {
 ````
 
 ## Releases
+V0.9.1 Pre-release2. Added an advanced brightness function to set/change the brightness of the string at all times, without changing the pixel settings. 
 V0.9.0 Pre-release. Examples simple & strandtest_wheels are compiling and confirmed working. Some documentation work needed to promote to a proper release. 
