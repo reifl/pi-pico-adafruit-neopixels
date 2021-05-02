@@ -44,9 +44,9 @@ void example() {
 
   for(int i=0; i<NUMPIXELS; i++) { // For each pixel...
     pixels.setPixelColor(i,pixels.Color(222, 49, 99));
-//	pixels2.setPixelColor(NUMPIXELS - (i +1),pixels2.Color((i%3)*150,((i+1)%3)*150 ,((i+2)%3)*150));
+
     pixels.show();   // Send the updated pixel colors to the hardware.
-//	pixels2.show() ;
+
     sleep_ms(DELAYVAL); // Pause before next pass through loop
   }
   for (int i=0; i <255 ; i++) {
